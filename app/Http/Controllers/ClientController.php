@@ -34,7 +34,7 @@ class ClientController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client ajouté avec succès.');
     }
 
-    // Afficher un client (optionnel)
+    // Afficher un client
     public function show(Client $client)
     {
         return view('clients.show', compact('client'));
@@ -46,7 +46,7 @@ class ClientController extends Controller
         return view('clients.edit', compact('client'));
     }
 
-    // Mettre à jour un client (optionnel)
+    // Mettre à jour un client
     public function update(Request $request, Client $client)
     {
         $request->validate([
@@ -60,7 +60,7 @@ class ClientController extends Controller
         return redirect()->route('clients.index')->with('success', 'Client modifié avec succès.');
     }
 
-    // Supprimer un client (optionnel)
+    // Supprimer un client
     public function destroy(Client $client)
     {
         $client->delete();
