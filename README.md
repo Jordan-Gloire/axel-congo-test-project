@@ -1,61 +1,139 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel + Docker Setup Guide
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## ✨ Description
 
-## About Laravel
+Ce projet utilise Laravel dans un conteneur Docker avec MySQL et phpMyAdmin. Il est destiné à un environnement de développement local.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📁 Structure Docker
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```yaml
+docker-compose.yml
+Dockerfile
+apache.conf
+.env
+```
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 📦 Services Docker
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### app (Laravel + Apache)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+* Dockerfile personnalisé
+* Ports : `8001:80`
+* Volume monté pour voir les modifications en direct
 
-## Laravel Sponsors
+### db (MySQL)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+* Image : `mysql:8.0`
+* Ports : `3307:3306`
+* Variables d'environnement configurées
+* Volume persisté : `db_data`
 
-### Premium Partners
+### phpmyadmin
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+* Interface web pour MySQL
+* Accessible via `localhost:8080`
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## ⚙️ Dockerfile (extrait)
 
-## Code of Conduct
+```dockerfile
+FROM php:8.2-apache
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+WORKDIR /var/www/html
+COPY . /var/www/html
 
-## Security Vulnerabilities
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN a2enmod rewrite
+RUN docker-php-ext-install pdo pdo_mysql
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+COPY ./apache.conf /etc/apache2/sites-available/000-default.conf
+```
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## ✉️ .env (extrait)
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=demo
+DB_USERNAME=user
+DB_PASSWORD=password
+SESSION_DRIVER=file
+```
+
+> **Attention** : DB\_HOST doit être le nom du service `db`, pas `127.0.0.1`
+
+---
+
+## ⚖️ Permissions Laravel
+
+> Laravel exige que certains dossiers soient accessibles en écriture.
+
+```bash
+chmod -R 777 storage bootstrap/cache
+```
+
+> ❌ Pas sécurisé en production — ✅ valable en local
+
+Dockerfile corrige ça avec :
+
+```dockerfile
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+```
+
+---
+
+## 📈 Migrations
+
+Pour créer les tables :
+
+```bash
+php artisan migrate
+```
+
+Pour les réinitialiser (avec seeders) :
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+---
+
+## ✔️ Bonnes pratiques
+
+* Ne jamais utiliser `127.0.0.1` pour DB dans Docker, toujours le nom du service (`db`)
+* Faire un `php artisan config:clear` après modification de `.env`
+* Utiliser `SESSION_DRIVER=file` en développement pour éviter les problèmes de session
+* Utiliser phpMyAdmin via `localhost:8080` pour vérifier les tables
+
+---
+
+## 🎉 App Fonctionnelle
+
+* Laravel fonctionne sur `http://localhost:8001`
+* phpMyAdmin sur `http://localhost:8080`
+* CRUD 100% opérationnel
+* Base de données persistée via `volumes`
+
+---
+
+## 📊 Astuce finale
+
+Pour accéder à MySQL depuis un outil externe :
+
+* Host : `127.0.0.1`
+* Port : `3307`
+* User : `user`
+* Password : `password`
+* Database : `demo`
+
+---
+
+Félicitations pour ton setup ! 🌟
